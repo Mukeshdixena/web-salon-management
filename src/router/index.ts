@@ -1,4 +1,3 @@
-// src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 
 // PUBLIC ROUTES
@@ -7,16 +6,15 @@ const SalonDetail = () => import('@/views/public/SalonDetail.vue')
 const BookingConfirm = () => import('@/views/public/BookingConfirm.vue')
 const BookingSuccess = () => import('@/views/public/BookingSuccess.vue')
 
-// CUSTOMER AUTH
-const CustomerLogin = () => import('@/views/customer/auth/Login.vue')
-const CustomerRegister = () => import('@/views/customer/auth/Register.vue')
+// UNIFIED AUTH
+const Login = () => import('@/views/auth/Login.vue')
+const Register = () => import('@/views/auth/Register.vue')
+
+// CUSTOMER
+const MyBookings = () => import('@/views/customer/bookings/MyBookings.vue')
 
 // PROVIDER
 const ProviderLayout = () => import('@/views/provider/ProviderLayout.vue')
-const ProviderLogin = () => import('@/views/provider/auth/Login.vue')
-const ProviderRegister = () => import('@/views/provider/auth/Register.vue')
-
-// Provider Pages
 const ProviderDashboardHome = () => import('@/views/provider/dashboard/DashboardHome.vue')
 const ProviderQueue = () => import('@/views/provider/queue/Queue.vue')
 const ProviderServices = () => import('@/views/provider/services/Services.vue')
@@ -25,76 +23,104 @@ const ProviderEarnings = () => import('@/views/provider/earnings/Earnings.vue')
 
 // ADMIN
 const AdminLayout = () => import('@/views/admin/AdminLayout.vue')
-const AdminLogin = () => import('@/views/admin/auth/Login.vue')
 const AdminDashboard = () => import('@/views/admin/dashboard/Dashboard.vue')
 const AdminSalons = () => import('@/views/admin/salons/SalonsList.vue')
 const AdminRevenue = () => import('@/views/admin/revenue/Revenue.vue')
 
+
 const router = createRouter({
     history: createWebHistory(),
+
     routes: [
-        // Customer-Facing
+
+        // ----------------------
+        // PUBLIC
+        // ----------------------
         { path: '/', component: Home },
         { path: '/salon/:id', component: SalonDetail },
         { path: '/booking/confirm', component: BookingConfirm },
         { path: '/booking/success', component: BookingSuccess },
 
-        // Customer Auth
-        { path: '/customer/login', component: CustomerLogin },
-        { path: '/customer/signup', component: CustomerRegister },
+        // ----------------------
+        // UNIFIED AUTH
+        // ----------------------
+        { path: '/login', component: Login },
+        { path: '/register', component: Register },
 
-        // Provider Auth
-        { path: '/provider/login', component: ProviderLogin },
-        { path: '/provider/register', component: ProviderRegister },
+        // ----------------------
+        // CUSTOMER (Protected)
+        // ----------------------
+        {
+            path: '/customer/bookings',
+            component: MyBookings,
+            meta: { requiresAuth: true, role: 'CUSTOMER' }
+        },
 
-        // Provider Dashboard (Protected)
+        // ----------------------
+        // PROVIDER (Protected)
+        // ----------------------
         {
             path: '/provider',
             component: ProviderLayout,
-            meta: { requiresProvider: true },
+            meta: { requiresAuth: true, role: 'PROVIDER' },
             children: [
-                { path: 'dashboard', component: ProviderDashboardHome, meta: { title: 'Dashboard' } },
-                { path: 'queue', component: ProviderQueue, meta: { title: "Today's Queue" } },
-                { path: 'services', component: ProviderServices, meta: { title: 'Services' } },
-                { path: 'bookings', component: ProviderBookings, meta: { title: 'All Bookings' } },
-                { path: 'earnings', component: ProviderEarnings, meta: { title: 'Earnings' } },
+                { path: 'dashboard', component: ProviderDashboardHome },
+                { path: 'queue', component: ProviderQueue },
+                { path: 'services', component: ProviderServices },
+                { path: 'bookings', component: ProviderBookings },
+                { path: 'earnings', component: ProviderEarnings },
                 { path: '', redirect: 'dashboard' }
             ]
         },
 
-        // Admin Auth
-        { path: '/admin/login', component: AdminLogin },
-
-        // Admin Panel (Protected)
+        // ----------------------
+        // ADMIN (Protected)
+        // ----------------------
         {
             path: '/admin',
             component: AdminLayout,
-            meta: { requiresAdmin: true },
+            meta: { requiresAuth: true, role: 'ADMIN' },
             children: [
-                { path: 'dashboard', component: AdminDashboard, meta: { title: 'Admin Dashboard' } },
-                { path: 'salons', component: AdminSalons, meta: { title: 'Salons Management' } },
-                { path: 'revenue', component: AdminRevenue, meta: { title: 'Revenue' } },
+                { path: 'dashboard', component: AdminDashboard },
+                { path: 'salons', component: AdminSalons },
+                { path: 'revenue', component: AdminRevenue },
                 { path: '', redirect: 'dashboard' }
             ]
         },
 
-        // Fallback
+        // FALLBACK
         { path: '/:pathMatch(.*)*', redirect: '/' }
     ]
 })
 
-// Global Auth Guard
-router.beforeEach((to, from, next) => {
-    const providerToken = localStorage.getItem('provider_token')
-    const adminToken = localStorage.getItem('admin_token')
 
-    if (to.meta.requiresProvider && !providerToken) {
-        next('/provider/login')
-    } else if (to.meta.requiresAdmin && !adminToken) {
-        next('/admin/login')
-    } else {
-        next()
+// ---------------------------------
+// GLOBAL AUTH GUARD (FINAL & FIXED)
+// ---------------------------------
+
+router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('token')
+    const role = localStorage.getItem('role')
+
+    if (to.meta.requiresAuth) {
+
+        // No token → redirect to correct login page
+        if (!token) {
+            if (to.meta.role === 'ADMIN') return next('/login?role=admin')
+            if (to.meta.role === 'PROVIDER') return next('/login?role=provider')
+            return next('/login?role=customer')
+        }
+
+        // Wrong role
+        if (to.meta.role !== role) {
+            if (role === 'ADMIN') return next('/admin/dashboard')
+            if (role === 'PROVIDER') return next('/provider/dashboard')
+            if (role === 'CUSTOMER') return next('/customer/bookings')
+            return next('/')
+        }
     }
+
+    next()
 })
 
 export default router

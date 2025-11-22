@@ -1,98 +1,189 @@
 <template>
-    <div>
+    <div class="container py-4">
+
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Services</h2>
-            <button @click="showAddModal = true" class="btn btn-pink rounded-pill px-4">
-                <i class="bi bi-plus-lg"></i> Add Service
+            <h2 class="fw-bold">Manage Services</h2>
+
+            <button class="btn btn-primary rounded-pill px-4" @click="openAddModal">
+                + Add Service
             </button>
         </div>
 
-        <div class="row g-4">
-            <div v-for="service in services" :key="service.id" class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 hover-lift">
-                    <div class="card-body p-4">
-                        <h5 class="fw-bold">{{ service.name }}</h5>
-                        <p class="text-muted small">{{ service.duration }} min • ₹{{ service.price }}</p>
-                        <div class="d-flex gap-2 mt-3">
-                            <button @click="editService(service)" class="btn btn-outline-secondary btn-sm rounded-pill">
+
+        <!-- TABLE -->
+        <div class="card shadow-sm p-4 rounded-4">
+            <table class="table align-middle table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Service</th>
+                        <th>Price</th>
+                        <th>Duration</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr v-for="(s, index) in services" :key="s.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ s.name }}</td>
+                        <td>₹{{ s.price }}</td>
+                        <td>{{ s.duration }} min</td>
+
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-warning me-2" @click="openEditModal(s)">
                                 Edit
                             </button>
-                            <button @click="deleteService(service.id)"
-                                class="btn btn-outline-danger btn-sm rounded-pill">
+
+                            <button class="btn btn-sm btn-danger" @click="deleteService(s.id)">
                                 Delete
                             </button>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div v-if="services.length === 0" class="text-center text-muted py-3">
+                No services added yet.
+            </div>
+        </div>
+
+        <!-- ADD / EDIT MODAL -->
+        <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
+            <div class="modal-content-box">
+                <h4 class="fw-bold mb-3">{{ editMode ? 'Edit Service' : 'Add Service' }}</h4>
+
+                <div class="mb-3">
+                    <label class="fw-bold mb-1">Service Name</label>
+                    <input type="text" class="form-control" v-model="form.name" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="fw-bold mb-1">Price (₹)</label>
+                    <input type="number" class="form-control" v-model="form.price" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="fw-bold mb-1">Duration (Minutes)</label>
+                    <input type="number" class="form-control" v-model="form.duration" />
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button class="btn btn-secondary" @click="closeModal">Cancel</button>
+
+                    <button v-if="editMode" class="btn btn-primary" @click="updateService">
+                        Update
+                    </button>
+
+                    <button v-else class="btn btn-success" @click="createService">
+                        Add
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Add/Edit Modal -->
-        <teleport to="body">
-            <div v-if="showAddModal" class="modal-backdrop" @click="showAddModal = false"></div>
-            <div v-if="showAddModal" class="modal show d-block">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content rounded-4">
-                        <div class="modal-header">
-                            <h5 class="modal-title fw-bold">{{ editingService ? 'Edit' : 'Add New' }} Service</h5>
-                            <button @click="showAddModal = false" class="btn-close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <input v-model="form.name" placeholder="Service Name" class="form-control mb-3">
-                            <input v-model="form.price" type="number" placeholder="Price (₹)" class="form-control mb-3">
-                            <input v-model="form.duration" type="number" placeholder="Duration (minutes)"
-                                class="form-control mb-3">
-                        </div>
-                        <div class="modal-footer">
-                            <button @click="saveService" class="btn btn-pink rounded-pill px-4">
-                                {{ editingService ? 'Update' : 'Add' }} Service
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </teleport>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import api from '@/api'
+import { ref, onMounted } from "vue";
+import api from "@/api";
 
-const services = ref<any[]>([])
-const showAddModal = ref(false)
-const editingService = ref<any>(null)
-const form = ref({ name: '', price: '', duration: '' })
+const services = ref<any[]>([]);
+const showModal = ref(false);
+const editMode = ref(false);
 
+const form = ref({
+    id: null,
+    name: "",
+    price: "",
+    duration: ""
+});
+
+// Load Services
 const loadServices = async () => {
-    const res = await api.get('/api/provider/services')
-    services.value = res.data
-}
-
-const saveService = async () => {
-    if (editingService.value) {
-        await api.put(`/api/provider/services/${editingService.value.id}`, form.value)
-    } else {
-        await api.post('/api/provider/services', form.value)
+    try {
+        const res = await api.get("/api/provider/services");
+        services.value = res.data;
+    } catch (err) {
+        console.error(err);
     }
-    showAddModal.value = false
-    form.value = { name: '', price: '', duration: '' }
-    editingService.value = null
-    loadServices()
-}
+};
 
-const editService = (s: any) => {
-    editingService.value = s
-    form.value = { ...s }
-    showAddModal.value = true
-}
+// Add
+const openAddModal = () => {
+    editMode.value = false;
+    form.value = { id: null, name: "", price: "", duration: "" };
+    showModal.value = true;
+};
 
+// Edit
+const openEditModal = (s: any) => {
+    editMode.value = true;
+    form.value = { id: s.id, name: s.name, price: s.price, duration: s.duration };
+    showModal.value = true;
+};
+
+// Save service
+const createService = async () => {
+    try {
+        await api.post("/api/provider/services/add", {
+            name: form.value.name,
+            price: Number(form.value.price),
+            duration: Number(form.value.duration)
+        });
+        closeModal();
+        loadServices();
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+// Update
+const updateService = async () => {
+    try {
+        await api.put(`/api/provider/services/${form.value.id}`, {
+            name: form.value.name,
+            price: Number(form.value.price),
+            duration: Number(form.value.duration)
+        });
+        closeModal();
+        loadServices();
+    } catch (err) { }
+};
+
+// Delete
 const deleteService = async (id: number) => {
-    if (confirm('Delete this service?')) {
-        await api.delete(`/api/provider/services/${id}`)
-        loadServices()
+    if (!confirm("Are you sure you want to delete this service?")) return;
+    try {
+        await api.delete(`/api/provider/services/${id}`);
+        loadServices();
+    } catch (err) {
+        console.error(err);
     }
+};
+
+const closeModal = () => {
+    showModal.value = false;
+};
+
+onMounted(() => loadServices());
+</script>
+
+<style scoped>
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-onMounted(loadServices)
-</script>
+.modal-content-box {
+    background: white;
+    padding: 25px;
+    width: 400px;
+    border-radius: 12px;
+}
+</style>

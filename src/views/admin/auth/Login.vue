@@ -6,17 +6,19 @@
                     <div class="card bg-black text-white border-pink shadow-lg rounded-4">
                         <div class="card-body p-5 text-center">
                             <h1 class="fw-bold mb-5">Admin Panel</h1>
+
                             <form @submit.prevent="login">
                                 <input v-model="email" type="email"
-                                    class="form-control form-control-lg rounded-pill mb-4" placeholder="Admin Email"
-                                    value="admin@beautybook.com">
+                                    class="form-control form-control-lg rounded-pill mb-4" placeholder="Admin Email">
+
                                 <input v-model="password" type="password"
-                                    class="form-control form-control-lg rounded-pill mb-4" placeholder="Password"
-                                    value="admin123">
+                                    class="form-control form-control-lg rounded-pill mb-4" placeholder="Password">
+
                                 <button type="submit" class="btn btn-pink w-100 rounded-pill py-3 fw-bold">
                                     Login as Admin
                                 </button>
                             </form>
+
                         </div>
                     </div>
                 </div>
@@ -30,14 +32,14 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
 
-const email = ref('admin@beautybook.com')
-const password = ref('admin123')
+const email = ref('')
+const password = ref('')
 const router = useRouter()
 const adminStore = useAdminStore()
 
 const login = async () => {
-    await adminStore.login(email.value, password.value)
-    router.push('/admin/dashboard')
+    const ok = await adminStore.login(email.value, password.value)
+    if (ok) router.push('/admin/dashboard')
 }
 </script>
 

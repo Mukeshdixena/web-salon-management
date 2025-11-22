@@ -1,38 +1,55 @@
 <template>
-    <div>
-        <h2 class="fw-bold mb-4">Today's Queue</h2>
+    <div class="p-4">
+        <h3 class="mb-4">Today’s Queue</h3>
 
-        <div class="row g-4">
-            <div v-for="booking in queue" :key="booking.id" class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                    <div class="card-header bg-pink text-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">{{ booking.customerName }}</h6>
-                            <span class="badge bg-white text-pink fw-bold">{{ booking.time }}</span>
-                        </div>
+        <div v-if="loading" class="text-center py-4">
+            Loading bookings...
+        </div>
+
+        <div v-else-if="bookings.length === 0" class="alert alert-info">
+            No bookings for today.
+        </div>
+
+        <div v-else class="list-group">
+
+            <div v-for="b in bookings" :key="b.id" class="list-group-item py-3">
+                <div class="d-flex justify-content-between">
+
+                    <div>
+                        <h5 class="fw-bold">{{ b.service.name }}</h5>
+                        <p class="mb-1">
+                            Customer: {{ b.customer.name }}<br />
+                            Time: {{ b.time }}
+                        </p>
+
+                        <span :class="['badge', statusBadge(b.status)]">
+                            {{ b.status }}
+                        </span>
                     </div>
-                    <div class="card-body">
-                        <p class="mb-2"><strong>Service:</strong> {{ booking.serviceName }}</p>
-                        <p class="mb-3 text-muted small">Phone: {{ booking.customerPhone }}</p>
 
-                        <div class="d-flex gap-2">
-                            <button @click="startService(booking.id)" :disabled="booking.status === 'in-progress'"
-                                class="btn btn-success btn-sm rounded-pill px-4">
-                                Start Service
-                            </button>
-                            <button @click="completeService(booking.id)" :disabled="booking.status !== 'in-progress'"
-                                class="btn btn-pink btn-sm rounded-pill px-4">
-                                Complete
-                            </button>
-                        </div>
+                    <div class="d-flex flex-column gap-2">
+
+                        <button v-if="b.status === 'PENDING'" class="btn btn-sm btn-success" @click="accept(b.id)">
+                            Accept
+                        </button>
+
+                        <button v-if="b.status === 'PENDING'" class="btn btn-sm btn-danger" @click="reject(b.id)">
+                            Reject
+                        </button>
+
+                        <button v-if="b.status === 'CONFIRMED'" class="btn btn-sm btn-primary" @click="start(b.id)">
+                            Start
+                        </button>
+
+                        <button v-if="b.status === 'IN_PROGRESS'" class="btn btn-sm btn-dark" @click="complete(b.id)">
+                            Complete
+                        </button>
+
                     </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="queue.length === 0" class="text-center py-5">
-            <p class="text-muted fs-4">No bookings today yet — relax!</p>
-        </div>
     </div>
 </template>
 
@@ -40,28 +57,67 @@
 import { ref, onMounted } from 'vue'
 import api from '@/api'
 
-const queue = ref<any[]>([])
+interface Booking {
+    id: number
+    time: string
+    status: string
+    customer: { name: string }
+    service: { name: string }
+}
+
+const bookings = ref<Booking[]>([])
+const loading = ref(false)
 
 const fetchQueue = async () => {
-    const res = await api.get('/api/provider/today-queue')
-    queue.value = res.data
-}
-
-const startService = async (id: number) => {
-    await api.post(`/api/provider/booking/${id}/start`)
-    fetchQueue()
-}
-
-const completeService = async (id: number) => {
-    await api.post(`/api/provider/booking/${id}/complete`)
-    fetchQueue()
+    loading.value = true
+    try {
+        const res = await api.get('/api/provider/bookings/today')
+        bookings.value = res.data
+    } catch (e) {
+        console.error(e)
+    } finally {
+        loading.value = false
+    }
 }
 
 onMounted(fetchQueue)
+
+const accept = async (id: number) => {
+    await api.post(`/api/provider/bookings/${id}/accept`)
+    fetchQueue()
+}
+
+const reject = async (id: number) => {
+    await api.post(`/api/provider/bookings/${id}/reject`)
+    fetchQueue()
+}
+
+const start = async (id: number) => {
+    await api.post(`/api/provider/bookings/${id}/start`)
+    fetchQueue()
+}
+
+const complete = async (id: number) => {
+    await api.post(`/api/provider/bookings/${id}/complete`)
+    fetchQueue()
+}
+
+const statusBadge = (status: string) => {
+    switch (status) {
+        case 'PENDING': return 'bg-warning text-dark'
+        case 'CONFIRMED': return 'bg-info text-dark'
+        case 'IN_PROGRESS': return 'bg-primary'
+        case 'COMPLETED': return 'bg-success'
+        case 'CANCELLED': return 'bg-danger'
+        default: return 'bg-secondary'
+    }
+}
 </script>
 
 <style scoped>
-.bg-pink {
-    background: linear-gradient(135deg, #ff6bd6, #ff8fab) !important;
+.list-group-item {
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
 }
 </style>

@@ -1,82 +1,166 @@
 <template>
-  <div class="min-vh-100 bg-gradient d-flex align-items-center">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-lg-5 col-md-7">
-          <div class="card shadow-lg border-0 rounded-4">
-            <div class="card-body p-5">
-              <div class="text-center mb-5">
-                <h1 class="fw-bold text-primary display-5">Welcome Back</h1>
-                <p class="text-muted">Sign in to manage your salon empire</p>
-              </div>
+  <div class="min-vh-100 d-flex align-items-center bg-light">
+    <div class="container" style="max-width: 540px;">
+      <div class="card rounded-4 shadow-sm border-0 overflow-hidden">
+        <div class="card-body p-5">
+          <h3 class="fw-bold mb-1">{{ titleText }}</h3>
+          <p class="text-muted mb-4">{{ subtitleText }}</p>
 
-              <form @submit.prevent="login">
-                <div class="mb-4">
-                  <input v-model="email" type="email" class="form-control form-control-lg rounded-3" placeholder="Email"
-                    required />
-                </div>
-                <div class="mb-4">
-                  <input v-model="password" type="password" class="form-control form-control-lg rounded-3"
-                    placeholder="Password" required />
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 btn-lg rounded-3 mb-4" :disabled="loading">
-                  <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ loading ? 'Signing in...' : 'Sign In' }}
-                </button>
-
-                <div class="text-center mt-4">
-                  <router-link to="/register" class="btn btn-outline-primary w-100">
-                    Don't have an account? <strong>Register as Salon Owner</strong>
-                  </router-link>
-                </div>
-                <div v-if="error" class="alert alert-danger rounded-3">{{ error }}</div>
-
-
-                <div class="text-center text-muted small">
-                  <p>Demo Accounts:</p>
-                  <code class="bg-light px-2 py-1 rounded">admin@salon.com</code> → ADMIN<br>
-                  Register as provider → will be PENDING until admin approves
-                </div>
-
-              </form>
+          <form @submit.prevent="onSubmit" autocomplete="off" novalidate>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input v-model="email" type="email" required class="form-control form-control-lg" />
             </div>
+
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input v-model="password" type="password" required class="form-control form-control-lg" />
+            </div>
+
+            <div class="d-grid">
+              <button :disabled="loading" type="submit" class="btn btn-pink btn-lg fw-bold">
+                <span v-if="!loading">{{ buttonText }}</span>
+                <span v-else>Signing in…</span>
+              </button>
+            </div>
+
+            <div v-if="error" class="alert alert-danger mt-3 py-2" role="alert">
+              {{ error }}
+            </div>
+          </form>
+
+          <hr class="my-4" />
+
+          <div class="text-center small">
+            <span v-if="role === 'customer'">
+              Don't have an account?
+              <a @click.prevent="goToRegister" href="#">Create account</a>
+            </span>
+
+            <span v-else-if="role === 'provider'">
+              New to BeautyBook?
+              <a @click.prevent="goToRegister" href="#">Register your salon</a>
+            </span>
+
+            <span v-else>
+              Need admin help? Contact support.
+            </span>
           </div>
         </div>
+      </div>
+
+      <div class="text-center mt-3 text-muted small">
+        <router-link to="/">← Back to home</router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import api from '@/api' // shared axios instance (baseURL = http://localhost:8080)
 
-const email = ref('admin@salon.com')
-const password = ref('admin123')
-const loading = ref(false)
-const error = ref('')
+type Role = 'customer' | 'provider' | 'admin'
+
+const route = useRoute()
 const router = useRouter()
-const auth = useAuthStore()
 
-const login = async () => {
+// Read role from query, default to customer
+const rawRole = String(route.query.role || 'customer').toLowerCase()
+const role = (['customer', 'provider', 'admin'].includes(rawRole) ? rawRole : 'customer') as Role
+
+// Form state
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+// UI labels
+const titleText = computed(() => {
+  if (role === 'admin') return 'Admin Sign in'
+  if (role === 'provider') return 'Salon Owner Sign in'
+  return 'Customer Sign in'
+})
+const subtitleText = computed(() => {
+  if (role === 'admin') return 'Access the admin panel'
+  if (role === 'provider') return 'Manage your salon, services, and queue'
+  return 'Find salons, book services and track bookings'
+})
+const buttonText = computed(() => `Sign in as ${role.charAt(0).toUpperCase() + role.slice(1)}`)
+
+// Pick endpoint by role
+const apiPath = computed(() => {
+  if (role === 'admin') return '/api/auth/admin/login'
+  if (role === 'provider') return '/api/auth/provider/login'
+  return '/api/auth/customer/login'
+})
+
+// Submit handler
+const onSubmit = async () => {
+  error.value = null
   loading.value = true
-  error.value = ''
+
   try {
-    await auth.login(email.value, password.value)
-    if (auth.role === 'ADMIN') router.push('/admin/dashboard')
-    if (auth.role === 'PROVIDER') router.push('/provider/dashboard')
-  } catch (e: any) {
-    error.value = e.response?.data || 'Login failed'
+    const payload = { email: email.value.trim(), password: password.value }
+    const res = await api.post(apiPath.value, payload)
+
+    // Expect LoginResponse: { token, userId, name, email, role }
+    const data = res.data
+    if (!data || !data.token) {
+      throw new Error('Invalid server response')
+    }
+
+    // Persist session
+    localStorage.setItem('token', String(data.token))
+    // server role expected values: "ADMIN", "PROVIDER", "CUSTOMER"
+    const serverRole = String(data.role || '').toUpperCase()
+    localStorage.setItem('role', serverRole)
+    localStorage.setItem('userId', String(data.userId ?? ''))
+
+    // Redirect: prefer server-sent role to avoid mismatch
+    if (serverRole === 'ADMIN') {
+      await router.push('/admin/dashboard')
+    } else if (serverRole === 'PROVIDER') {
+      await router.push('/provider/dashboard')
+    } else {
+      await router.push('/customer/dashboard')
+    }
+
+  } catch (err: any) {
+    // err.response?.data might be a string or object
+    if (err.response?.data) {
+      error.value = typeof err.response.data === 'string' ? err.response.data : (err.response.data.message || JSON.stringify(err.response.data))
+    } else {
+      error.value = err.message || 'Login failed'
+    }
   } finally {
     loading.value = false
   }
 }
+
+// navigation helpers
+const goToRegister = () => {
+  const targetRole = role === 'provider' ? 'provider' : 'customer'
+  router.push({ path: '/register', query: { role: targetRole } })
+}
 </script>
 
 <style scoped>
-.bg-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.btn-pink {
+  background: linear-gradient(135deg, #ff6bd6, #ff8fab);
+  border: none;
+  color: white;
+  transition: all 0.2s;
+}
+
+.btn-pink[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.card {
+  border-radius: 16px;
 }
 </style>

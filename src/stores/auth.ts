@@ -1,31 +1,74 @@
-// src/stores/auth.ts
 import { defineStore } from 'pinia'
-import api from '@/api'  // ← clean import
+import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
-        user: null as any,
-        token: localStorage.getItem('token') || '',
-        role: localStorage.getItem('role') || ''
+        token: '',
+        user: null as null | {
+            id: number
+            name: string
+            email: string
+            role: string
+        }
     }),
+
+    getters: {
+        role: (state) => state.user?.role
+    },
 
     actions: {
         async login(email: string, password: string) {
-            const res = await api.post('/auth/login', { email, password })
-            this.token = res.data.token
-            this.user = res.data.user
-            this.role = res.data.user.role
+            let url = ''
+
+            // Try admin first
+            try {
+                url = 'http://localhost:8080/api/auth/admin/login'
+                const res = await axios.post(url, { email, password })
+                this.handleLogin(res.data)
+                return
+            } catch (e) {
+                // ignore and try provider next
+            }
+
+            // Try provider login
+            try {
+                url = 'http://localhost:8080/api/auth/provider/login'
+                const res = await axios.post(url, { email, password })
+                this.handleLogin(res.data)
+                return
+            } catch (e: any) {
+                throw e // return failure to page
+            }
+        },
+
+        handleLogin(data: any) {
+            this.token = data.token
+            this.user = {
+                id: data.userId,
+                name: data.name,
+                email: data.email,
+                role: data.role
+            }
 
             localStorage.setItem('token', this.token)
-            localStorage.setItem('role', this.role)
+            localStorage.setItem('user', JSON.stringify(this.user))
+        },
+
+        loadStored() {
+            const t = localStorage.getItem('token')
+            const u = localStorage.getItem('user')
+
+            if (t && u) {
+                this.token = t
+                this.user = JSON.parse(u)
+            }
         },
 
         logout() {
-            this.user = null
             this.token = ''
-            this.role = ''
+            this.user = null
             localStorage.removeItem('token')
-            localStorage.removeItem('role')
+            localStorage.removeItem('user')
         }
     }
 })

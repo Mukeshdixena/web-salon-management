@@ -1,104 +1,125 @@
 <template>
-    <div>
-        <h2 class="fw-bold mb-4">Welcome back, {{ providerStore.salon?.name }}!</h2>
+    <div class="container py-4">
 
-        <!-- Stats Cards -->
-        <div class="row g-4 mb-5">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-4 text-center p-4 hover-lift">
-                    <i class="bi bi-calendar-check fs-1 text-pink mb-3"></i>
-                    <h3 class="fw-bold">{{ stats.todayBookings }}</h3>
-                    <p class="text-muted">Today's Bookings</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-4 text-center p-4 hover-lift">
-                    <i class="bi bi-clock-history fs-1 text-success mb-3"></i>
-                    <h3 class="fw-bold">{{ stats.inProgress }}</h3>
-                    <p class="text-muted">In Progress</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-4 text-center p-4 hover-lift">
-                    <i class="bi bi-currency-rupee fs-1 text-warning mb-3"></i>
-                    <h3 class="fw-bold">₹{{ stats.todayEarnings }}</h3>
-                    <p class="text-muted">Today's Earnings</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-4 text-center p-4 hover-lift">
-                    <i class="bi bi-star-fill fs-1 text-primary mb-3"></i>
-                    <h3 class="fw-bold">{{ stats.rating || '4.8' }}</h3>
-                    <p class="text-muted">Average Rating</p>
+        <h2 class="fw-bold mb-4">Provider Dashboard</h2>
+
+        <!-- STAT CARDS -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3" v-for="card in stats" :key="card.title">
+                <div class="card shadow-sm p-4 text-center rounded-4">
+                    <div class="fs-3 mb-2">
+                        <i :class="card.icon"></i>
+                    </div>
+                    <h4 class="fw-bold">{{ card.value }}</h4>
+                    <p class="text-muted">{{ card.title }}</p>
                 </div>
             </div>
         </div>
 
-        <!-- Next 3 Bookings -->
-        <h4 class="fw-bold mb-3">Next Up</h4>
-        <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-body">
-                <div v-for="b in nextBookings" :key="b.id"
-                    class="d-flex align-items-center py-3 border-bottom last:border-0">
-                    <div class="me-3">
-                        <div class="bg-pink text-white rounded-circle d-flex align-items-center justify-content-center"
-                            style="width:50px;height:50px;">
-                            {{ b.customerName.charAt(0) }}
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1">{{ b.customerName }}</h6>
-                        <p class="text-muted small mb-0">{{ b.serviceName }} • {{ b.time }}</p>
-                    </div>
-                    <span class="badge" :class="b.status === 'pending' ? 'bg-warning' : 'bg-success'">
-                        {{ b.status }}
-                    </span>
-                </div>
-                <div v-if="nextBookings.length === 0" class="text-center py-4 text-muted">
-                    No upcoming bookings today
-                </div>
+        <!-- TODAY'S QUEUE -->
+        <div class="card shadow-sm p-4 rounded-4">
+            <h4 class="fw-bold mb-3">Today's Queue</h4>
+
+            <div v-if="loading" class="text-center py-3 text-muted">
+                Loading queue...
+            </div>
+
+            <table v-else class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr v-for="(q, index) in queue" :key="q.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ q.customer.name }}</td>
+                        <td>{{ q.service.name }}</td>
+                        <td>{{ q.time }}</td>
+
+                        <td>
+                            <span :class="statusClass(q.status)" class="badge px-3 py-2">
+                                {{ q.status }}
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div v-if="queue.length === 0" class="text-center text-muted py-3">
+                No bookings today.
             </div>
         </div>
+
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useProviderStore } from '@/stores/provider'
-import api from '@/api'
+import { ref, onMounted } from "vue";
+import api from "@/api";
 
-const providerStore = useProviderStore()
-const stats = ref({
-    todayBookings: 0,
-    inProgress: 0,
-    todayEarnings: 0,
-    rating: '4.8'
-})
-const nextBookings = ref<any[]>([])
+const queue = ref<any[]>([]);
+const loading = ref(false);
 
-const loadData = async () => {
-    const [statsRes, queueRes] = await Promise.all([
-        api.get('/api/provider/stats'),
-        api.get('/api/provider/today-queue')
-    ])
-    stats.value = statsRes.data
-    nextBookings.value = queueRes.data.slice(0, 5)
-}
+// Dashboard stats (auto-updated after API load)
+const stats = ref([
+    { title: "Today's Bookings", value: 0, icon: "bi bi-list-check" },
+    { title: "In Progress", value: 0, icon: "bi bi-hourglass-split" },
+    { title: "Completed Today", value: 0, icon: "bi bi-check-circle" },
+    { title: "Today's Earnings", value: "₹0", icon: "bi bi-currency-rupee" },
+]);
 
-onMounted(loadData)
+// Status color helper
+const statusClass = (status: string) => {
+    switch (status) {
+        case "PENDING": return "bg-secondary";
+        case "IN_PROGRESS": return "bg-warning text-dark";
+        case "COMPLETED": return "bg-success";
+        default: return "bg-dark";
+    }
+};
+
+const loadQueue = async () => {
+    loading.value = true;
+    try {
+        const res = await api.get("/api/provider/today-queue");
+        queue.value = res.data;
+
+        // Auto Update Stats
+        stats.value[0].value = queue.value.length;                               // total bookings
+        stats.value[1].value = queue.value.filter(q => q.status === "IN_PROGRESS").length;
+        stats.value[2].value = queue.value.filter(q => q.status === "COMPLETED").length;
+
+        // Earnings (sum of price of completed)
+        const totalEarnings = queue.value
+            .filter(q => q.status === "COMPLETED")
+            .reduce((sum, q) => sum + q.price, 0);
+
+        stats.value[3].value = "₹" + totalEarnings;
+
+    } catch (err) {
+        console.error(err);
+    }
+    loading.value = false;
+};
+
+onMounted(() => {
+    loadQueue();
+});
 </script>
 
 <style scoped>
-.hover-lift {
-    transition: all 0.3s;
+.card {
+    border-radius: 16px;
 }
 
-.hover-lift:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12) !important;
-}
-
-.bg-pink {
-    background: linear-gradient(135deg, #ff6bd6, #ff8fab) !important;
+.badge {
+    border-radius: 12px;
+    font-size: 0.85rem;
 }
 </style>

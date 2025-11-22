@@ -4,15 +4,12 @@
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top py-3">
       <div class="container">
-        <!-- Logo -->
         <router-link to="/" class="navbar-brand fw-bold fs-3 text-pink d-flex align-items-center gap-2">
           <i class="bi bi-scissors"></i> BeautyBook
         </router-link>
 
-        <!-- Right Side -->
         <div class="ms-auto d-flex align-items-center gap-4">
-          <!-- Login Button (Like Zomato/Amazon) -->
-          <button @click="showAuthModal = true"
+          <button @click="goToLogin"
             class="btn btn-outline-dark rounded-pill px-4 fw-semibold d-flex align-items-center gap-2">
             <i class="bi bi-person"></i>
             Login
@@ -39,8 +36,7 @@
             </button>
           </div>
           <div class="col-lg-5 text-center">
-            <img
-              src="https://images.unsplash.com/photo-1675034743339-0b0747047727?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            <img src="https://images.unsplash.com/photo-1675034743339-0b0747047727?q=80&w=1470&auto=format&fit=crop"
               class="img-fluid rounded-4 shadow-lg hero-image" alt="Salon">
           </div>
         </div>
@@ -57,24 +53,25 @@
       <div class="row g-4">
         <div v-for="salon in salons" :key="salon.id" class="col-md-6 col-lg-4">
           <div class="card salon-card border-0 shadow-sm rounded-4 overflow-hidden hover-lift">
-            <img :src="salon.image || `https://source.unsplash.com/random/800x600/?salon,beauty,${salon.id}`"
-              class="card-img-top" style="height: 220px; object-fit: cover;" alt="Salon">
+            <img :src="salon.image" class="card-img-top" style="height: 220px; object-fit: cover;" alt="Salon">
+
             <div class="position-absolute top-0 end-0 m-3">
               <span class="badge bg-white text-dark fw-bold px-3 py-2 rounded-pill shadow-sm">
-                <i class="bi bi-star-fill text-warning"></i> {{ salon.rating || '4.8' }}
+                <i class="bi bi-star-fill text-warning"></i> {{ salon.rating }}
               </span>
             </div>
+
             <div class="card-body p-4">
               <h5 class="fw-bold mb-2">{{ salon.name }}</h5>
-              <p class="text-muted small mb-3">
-                {{ (salon.description || 'Premium beauty services').slice(0, 90) }}...
-              </p>
+              <p class="text-muted small mb-3">{{ salon.description.slice(0, 90) }}...</p>
+
               <div class="d-flex justify-content-between align-items-center">
                 <small class="text-muted">
-                  <i class="bi bi-geo-alt-fill text-pink"></i> {{ salon.address || 'Nearby' }}
+                  <i class="bi bi-geo-alt-fill text-pink"></i> {{ salon.address }}
                 </small>
                 <small class="text-success fw-bold">Open Now</small>
               </div>
+
               <button @click="handleBookNow(salon)" class="btn btn-pink w-100 rounded-pill mt-3 fw-semibold py-3">
                 Book Now
               </button>
@@ -83,69 +80,6 @@
         </div>
       </div>
     </section>
-
-    <!-- AUTH MODAL (Login / Signup Tabs) -->
-    <teleport to="body">
-      <div v-if="showAuthModal" class="modal-backdrop fade" @click="showAuthModal = false"></div>
-      <div v-if="showAuthModal" class="modal fade show d-block" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content rounded-4 shadow-lg border-0 overflow-hidden">
-            <div class="modal-header border-0 pb-0">
-              <ul class="nav nav-tabs w-100 border-0" role="tablist">
-                <li class="nav-item flex-fill">
-                  <button :class="{ 'active': activeTab === 'login' }" @click="activeTab = 'login'"
-                    class="nav-link w-100 py-3 fw-bold">Login</button>
-                </li>
-                <li class="nav-item flex-fill">
-                  <button :class="{ 'active': activeTab === 'signup' }" @click="activeTab = 'signup'"
-                    class="nav-link w-100 py-3 fw-bold">Sign Up</button>
-                </li>
-              </ul>
-              <button @click="showAuthModal = false" class="btn-close position-absolute top-0 end-0 m-3"></button>
-            </div>
-            <div class="modal-body pt-4">
-              <!-- Login Form -->
-              <div v-if="activeTab === 'login'">
-                <form @submit.prevent="login">
-                  <div class="mb-3">
-                    <input type="email" v-model="loginEmail" class="form-control form-control-lg rounded-pill"
-                      placeholder="Email" required>
-                  </div>
-                  <div class="mb-3">
-                    <input type="password" v-model="loginPassword" class="form-control form-control-lg rounded-pill"
-                      placeholder="Password" required>
-                  </div>
-                  <button type="submit" class="btn btn-pink w-100 rounded-pill py-3 fw-bold">
-                    Login
-                  </button>
-                </form>
-              </div>
-
-              <!-- Signup Form -->
-              <div v-else>
-                <form @submit.prevent="signup">
-                  <div class="mb-3">
-                    <input type="text" v-model="signupName" class="form-control form-control-lg rounded-pill"
-                      placeholder="Full Name" required>
-                  </div>
-                  <div class="mb-3">
-                    <input type="email" v-model="signupEmail" class="form-control form-control-lg rounded-pill"
-                      placeholder="Email" required>
-                  </div>
-                  <div class="mb-3">
-                    <input type="password" v-model="signupPassword" class="form-control form-control-lg rounded-pill"
-                      placeholder="Password" required>
-                  </div>
-                  <button type="submit" class="btn btn-pink w-100 rounded-pill py-3 fw-bold">
-                    Create Account
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </teleport>
 
     <!-- FOOTER -->
     <footer class="bg-dark text-white py-5 mt-auto">
@@ -161,57 +95,71 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
 
-interface Salon { id: number; name: string; description?: string; address?: string; image?: string; rating?: string }
+interface Salon {
+  id: number
+  name: string
+  description: string
+  address: string
+  image: string
+  rating: string
+}
 
 const router = useRouter()
+
+/* ---------------- NAVBAR LOGIN REDIRECT ---------------- */
+const goToLogin = () => {
+  router.push({ path: '/login', query: { role: 'customer' } })
+}
+
+/* ---------------- BOOK NOW REDIRECT ---------------- */
+const handleBookNow = () => {
+  router.push({ path: '/login', query: { role: 'customer' } })
+}
+
+/* ---------------- UI STATE ---------------- */
 const salons = ref<Salon[]>([])
 const salonsSection = ref<HTMLElement | null>(null)
 
-const showAuthModal = ref(false)
-const activeTab = ref<'login' | 'signup'>('login')
-
-// Form fields
-const loginEmail = ref('')
-const loginPassword = ref('')
-const signupName = ref('')
-const signupEmail = ref('')
-const signupPassword = ref('')
-
+/* ---------------- SCROLL TO SALONS ---------------- */
 const scrollToSalons = () => {
   salonsSection.value?.scrollIntoView({ behavior: 'smooth' })
 }
 
-const handleBookNow = (salon: Salon) => {
-  // Force login before booking (like Zomato)
-  showAuthModal.value = true
-  // Later: save selected salon in store
-}
+/* ---------------- FALLBACK DATA ---------------- */
+const sampleSalons: Salon[] = [
+  {
+    id: 1,
+    name: "Glam & Glow Studio",
+    description: "Full-service beauty studio offering hair, nails, and spa treatments.",
+    address: "MG Road, Bengaluru",
+    image: "https://images.unsplash.com/photo-1601041518595-9950e2f95562?q=80",
+    rating: "4.8"
+  },
+  {
+    id: 2,
+    name: "Urban Chic Salon",
+    description: "Trendy salon with premium stylists and beauty experts.",
+    address: "Connaught Place, Delhi",
+    image: "https://images.unsplash.com/photo-1542834369-f10ebf06d3cb?q=80",
+    rating: "4.7"
+  },
+  {
+    id: 3,
+    name: "Luxury Spa & Beauty",
+    description: "Relax, rejuvenate, and enhance beauty with luxury spa services.",
+    address: "Bandra West, Mumbai",
+    image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80",
+    rating: "4.9"
+  }
+]
 
-const login = () => {
-  // TODO: Call API login
-  alert('Login coming soon!')
-  showAuthModal.value = false
-}
-
-const signup = () => {
-  // TODO: Call API signup
-  alert('Account created! Welcome to BeautyBook')
-  showAuthModal.value = false
-}
-
+/* ---------------- FETCH SALONS ---------------- */
 onMounted(async () => {
   try {
     const res = await api.get('/salons')
-    salons.value = res.data.map((s: any) => ({
-      id: s.id,
-      name: s.name || 'Premium Salon',
-      description: s.description,
-      address: s.address,
-      image: s.image || `https://source.unsplash.com/random/800x600/?salon,${s.id}`,
-      rating: s.rating || (4.5 + Math.random() * 0.5).toFixed(1)
-    }))
-  } catch (err) {
-    console.log('API offline or no salons')
+    salons.value = res.data?.length ? res.data : sampleSalons
+  } catch {
+    salons.value = sampleSalons
   }
 })
 </script>
@@ -258,29 +206,5 @@ onMounted(async () => {
 .hover-lift:hover {
   transform: translateY(-12px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
-}
-
-.modal-backdrop {
-  background: rgba(0, 0, 0, 0.6);
-  position: fixed;
-  inset: 0;
-  z-index: 1040;
-}
-
-.modal {
-  z-index: 1050;
-  background: transparent;
-}
-
-.nav-tabs .nav-link {
-  border: none;
-  border-radius: 0;
-  color: #666;
-  font-size: 1.1rem;
-}
-
-.nav-tabs .nav-link.active {
-  color: #ff6bd6;
-  border-bottom: 3px solid #ff6bd6;
 }
 </style>
