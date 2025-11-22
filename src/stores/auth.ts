@@ -1,25 +1,12 @@
 // src/stores/auth.ts
 import { defineStore } from 'pinia'
-import axios from 'axios'
-
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
-    headers: { 'Content-Type': 'application/json' }
-})
-
-export interface User {
-    id: number
-    name: string
-    email: string
-    role: string
-    status: string
-}
+import api from '@/api'  // ← clean import
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
-        user: null as User | null,
-        token: '' as string,
-        role: '' as string
+        user: null as any,
+        token: localStorage.getItem('token') || '',
+        role: localStorage.getItem('role') || ''
     }),
 
     actions: {
@@ -31,8 +18,6 @@ export const useAuthStore = defineStore('auth', {
 
             localStorage.setItem('token', this.token)
             localStorage.setItem('role', this.role)
-
-            api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
         },
 
         logout() {
@@ -41,17 +26,6 @@ export const useAuthStore = defineStore('auth', {
             this.role = ''
             localStorage.removeItem('token')
             localStorage.removeItem('role')
-            delete api.defaults.headers.common['Authorization']
-        },
-
-        init() {
-            const token = localStorage.getItem('token')
-            const role = localStorage.getItem('role')
-            if (token && role) {
-                this.token = token
-                this.role = role
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-            }
         }
     }
 })

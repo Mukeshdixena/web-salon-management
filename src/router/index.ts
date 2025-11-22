@@ -15,7 +15,12 @@ const router = createRouter({
             path: '/admin/dashboard',
             component: () => import('@/views/admin/Dashboard.vue'),
             meta: { requiresAuth: true, role: 'ADMIN' }
-        }
+        },
+        // Add this route
+        {
+            path: '/register',
+            component: () => import('@/views/auth/Register.vue')
+        },
     ]
 })
 

@@ -12,12 +12,12 @@
 
               <form @submit.prevent="login">
                 <div class="mb-4">
-                  <input v-model="email" type="email" class="form-control form-control-lg rounded-3" 
-                         placeholder="Email" required />
+                  <input v-model="email" type="email" class="form-control form-control-lg rounded-3" placeholder="Email"
+                    required />
                 </div>
                 <div class="mb-4">
-                  <input v-model="password" type="password" class="form-control form-control-lg rounded-3" 
-                         placeholder="Password" required />
+                  <input v-model="password" type="password" class="form-control form-control-lg rounded-3"
+                    placeholder="Password" required />
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 btn-lg rounded-3 mb-4" :disabled="loading">
@@ -25,13 +25,20 @@
                   {{ loading ? 'Signing in...' : 'Sign In' }}
                 </button>
 
+                <div class="text-center mt-4">
+                  <router-link to="/register" class="btn btn-outline-primary w-100">
+                    Don't have an account? <strong>Register as Salon Owner</strong>
+                  </router-link>
+                </div>
                 <div v-if="error" class="alert alert-danger rounded-3">{{ error }}</div>
+
 
                 <div class="text-center text-muted small">
                   <p>Demo Accounts:</p>
                   <code class="bg-light px-2 py-1 rounded">admin@salon.com</code> → ADMIN<br>
                   Register as provider → will be PENDING until admin approves
                 </div>
+
               </form>
             </div>
           </div>
@@ -69,5 +76,7 @@ const login = async () => {
 </script>
 
 <style scoped>
-.bg-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.bg-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 </style>
