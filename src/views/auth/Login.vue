@@ -1,12 +1,57 @@
 <template>
   <div class="min-vh-100 d-flex align-items-center bg-light">
     <div class="container" style="max-width: 540px;">
-      <div class="card rounded-4 shadow-sm border-0 overflow-hidden">
-        <div class="card-body p-5">
-          <h3 class="fw-bold mb-1">{{ titleText }}</h3>
-          <p class="text-muted mb-4">{{ subtitleText }}</p>
 
+      <!-- Role Selection -->
+      <div v-if="!selectedRole" class="text-center">
+        <h2 class="fw-bold mb-4">Choose Login Type</h2>
+
+        <div class="d-grid gap-3">
+          <button class="btn btn-lg btn-outline-dark" @click="selectRole('customer')">
+            Customer Login / Register
+          </button>
+
+          <button class="btn btn-lg btn-outline-primary" @click="selectRole('provider')">
+            Provider Login / Register
+          </button>
+
+          <button class="btn btn-lg btn-outline-danger" @click="selectRole('admin')">
+            Admin Login
+          </button>
+        </div>
+
+        <div class="text-center mt-4 text-muted small">
+          <router-link to="/">← Back to home</router-link>
+        </div>
+      </div>
+
+      <!-- Auth Form -->
+      <div v-else class="card rounded-4 shadow-sm border-0 overflow-hidden">
+        <div class="card-body p-5">
+
+          <!-- Back button -->
+          <button class="btn btn-sm btn-link px-0 mb-3" @click="resetRole">
+            ← Choose different role
+          </button>
+
+          <!-- Title -->
+          <h3 class="fw-bold mb-1">{{ titleText }}</h3>
+          <p class="text-muted mb-2">{{ subtitleText }}</p>
+
+          <!-- Small current role note -->
+          <p class="text-muted small mb-4">
+            You are {{ isLogin ? 'logging in' : 'registering' }} as {{ selectedRoleLabel }}
+          </p>
+
+          <!-- FORM -->
           <form @submit.prevent="onSubmit" autocomplete="off" novalidate>
+
+            <!-- FULL NAME for register only -->
+            <div v-if="!isLogin" class="mb-3">
+              <label class="form-label">Full Name</label>
+              <input v-model="name" type="text" required class="form-control form-control-lg" />
+            </div>
+
             <div class="mb-3">
               <label class="form-label">Email</label>
               <input v-model="email" type="email" required class="form-control form-control-lg" />
@@ -17,10 +62,17 @@
               <input v-model="password" type="password" required class="form-control form-control-lg" />
             </div>
 
+            <!-- Confirm Password -->
+            <div v-if="!isLogin" class="mb-3">
+              <label class="form-label">Confirm Password</label>
+              <input v-model="confirmPassword" type="password" required class="form-control form-control-lg" />
+            </div>
+
+            <!-- Button -->
             <div class="d-grid">
               <button :disabled="loading" type="submit" class="btn btn-pink btn-lg fw-bold">
                 <span v-if="!loading">{{ buttonText }}</span>
-                <span v-else>Signing in…</span>
+                <span v-else>{{ isLogin ? 'Signing in…' : 'Creating account…' }}</span>
               </button>
             </div>
 
@@ -31,119 +83,173 @@
 
           <hr class="my-4" />
 
+          <!-- Bottom Switch Text -->
           <div class="text-center small">
-            <span v-if="role === 'customer'">
+            <span v-if="isLogin && selectedRole !== 'admin'">
               Don't have an account?
-              <a @click.prevent="goToRegister" href="#">Create account</a>
+              <a href="#" @click.prevent="switchToRegister">Register</a>
             </span>
 
-            <span v-else-if="role === 'provider'">
-              New to BeautyBook?
-              <a @click.prevent="goToRegister" href="#">Register your salon</a>
+            <span v-else-if="!isLogin">
+              Already have an account?
+              <a href="#" @click.prevent="switchToLogin">Sign in</a>
             </span>
 
-            <span v-else>
-              Need admin help? Contact support.
+            <span v-else-if="selectedRole === 'admin'">
+              Admin access is restricted to authorized users only.
             </span>
           </div>
+
         </div>
       </div>
 
-      <div class="text-center mt-3 text-muted small">
+      <!-- Back to home -->
+      <div v-if="selectedRole" class="text-center mt-3 text-muted small">
         <router-link to="/">← Back to home</router-link>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import api from '@/api' // shared axios instance (baseURL = http://localhost:8080)
+import { useRouter } from 'vue-router'
+import api from '@/api'
 
 type Role = 'customer' | 'provider' | 'admin'
 
-const route = useRoute()
 const router = useRouter()
 
-// Read role from query, default to customer
-const rawRole = String(route.query.role || 'customer').toLowerCase()
-const role = (['customer', 'provider', 'admin'].includes(rawRole) ? rawRole : 'customer') as Role
+// State
+const selectedRole = ref<Role | null>(null)
+const isLogin = ref(true)
 
-// Form state
+// Form fields
+const name = ref('')
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// UI labels
+// Selecting role
+const selectRole = (role: Role) => {
+  selectedRole.value = role
+}
+
+// Reset selection
+const resetRole = () => {
+  selectedRole.value = null
+  isLogin.value = true
+  name.value = ''
+  email.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+}
+
+// Labels
+const selectedRoleLabel = computed(() => {
+  if (selectedRole.value === 'customer') return 'Customer'
+  if (selectedRole.value === 'provider') return 'Provider'
+  return 'Admin'
+})
+
 const titleText = computed(() => {
-  if (role === 'admin') return 'Admin Sign in'
-  if (role === 'provider') return 'Salon Owner Sign in'
-  return 'Customer Sign in'
+  if (isLogin.value) {
+    if (selectedRole.value === 'admin') return 'Admin Sign in'
+    if (selectedRole.value === 'provider') return 'Provider Sign in'
+    return 'Customer Sign in'
+  }
+
+  if (selectedRole.value === 'provider') return 'Register Your Salon'
+  return 'Create Your Account'
 })
+
 const subtitleText = computed(() => {
-  if (role === 'admin') return 'Access the admin panel'
-  if (role === 'provider') return 'Manage your salon, services, and queue'
-  return 'Find salons, book services and track bookings'
-})
-const buttonText = computed(() => `Sign in as ${role.charAt(0).toUpperCase() + role.slice(1)}`)
+  if (isLogin.value) {
+    if (selectedRole.value === 'admin') return 'Access the admin dashboard'
+    if (selectedRole.value === 'provider') return 'Manage your salon and services'
+    return 'Book salons and manage your appointments'
+  }
 
-// Pick endpoint by role
+  if (selectedRole.value === 'provider') return 'Grow your business on our platform'
+  return 'Join and start booking salons'
+})
+
+const buttonText = computed(() =>
+  isLogin.value
+    ? `Sign in as ${selectedRoleLabel.value}`
+    : `Register as ${selectedRoleLabel.value}`
+)
+
+// API paths
 const apiPath = computed(() => {
-  if (role === 'admin') return '/api/auth/admin/login'
-  if (role === 'provider') return '/api/auth/provider/login'
-  return '/api/auth/customer/login'
+  if (isLogin.value) {
+    if (selectedRole.value === 'admin') return '/api/auth/admin/login'
+    if (selectedRole.value === 'provider') return '/api/auth/provider/login'
+    return '/api/auth/customer/login'
+  } else {
+    if (selectedRole.value === 'provider') return '/api/auth/provider/register'
+    return '/api/auth/customer/register'
+  }
 })
 
-// Submit handler
+// Submit Login/Register
 const onSubmit = async () => {
   error.value = null
   loading.value = true
 
   try {
-    const payload = { email: email.value.trim(), password: password.value }
-    const res = await api.post(apiPath.value, payload)
-
-    // Expect LoginResponse: { token, userId, name, email, role }
-    const data = res.data
-    if (!data || !data.token) {
-      throw new Error('Invalid server response')
+    if (!isLogin.value && password.value !== confirmPassword.value) {
+      throw new Error('Passwords do not match')
     }
 
-    // Persist session
-    localStorage.setItem('token', String(data.token))
-    // server role expected values: "ADMIN", "PROVIDER", "CUSTOMER"
-    const serverRole = String(data.role || '').toUpperCase()
-    localStorage.setItem('role', serverRole)
-    localStorage.setItem('userId', String(data.userId ?? ''))
+    const payload = isLogin.value
+      ? { email: email.value.trim(), password: password.value }
+      : { name: name.value.trim(), email: email.value.trim(), password: password.value }
 
-    // Redirect: prefer server-sent role to avoid mismatch
-    if (serverRole === 'ADMIN') {
-      await router.push('/admin/dashboard')
-    } else if (serverRole === 'PROVIDER') {
-      await router.push('/provider/dashboard')
+    const res = await api.post(apiPath.value, payload)
+    const data = res.data
+
+    if (isLogin.value) {
+      if (!data.token) throw new Error('Invalid server response')
+
+      const role = String(data.role).toUpperCase()
+
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('role', role)
+      localStorage.setItem('userId', String(data.userId ?? ''))
+
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: data.userId,
+          name: data.name,
+          email: data.email,
+          role
+        })
+      )
+
+      if (role === 'ADMIN') router.push('/admin/dashboard')
+      else if (role === 'PROVIDER') router.push('/provider/dashboard')
+      else router.push('/customer/dashboard')
     } else {
-      await router.push('/customer/dashboard')
+      // Registration successful
+      isLogin.value = true
+      error.value = 'Account created successfully. Please log in.'
     }
 
   } catch (err: any) {
-    // err.response?.data might be a string or object
-    if (err.response?.data) {
-      error.value = typeof err.response.data === 'string' ? err.response.data : (err.response.data.message || JSON.stringify(err.response.data))
-    } else {
-      error.value = err.message || 'Login failed'
-    }
+    error.value = err.response?.data?.message || err.message || 'Action failed'
   } finally {
     loading.value = false
   }
 }
 
-// navigation helpers
-const goToRegister = () => {
-  const targetRole = role === 'provider' ? 'provider' : 'customer'
-  router.push({ path: '/register', query: { role: targetRole } })
-}
+// Switch between Login/Register
+const switchToRegister = () => (isLogin.value = false)
+const switchToLogin = () => (isLogin.value = true)
 </script>
 
 <style scoped>
@@ -152,15 +258,5 @@ const goToRegister = () => {
   border: none;
   color: white;
   transition: all 0.2s;
-}
-
-.btn-pink[disabled] {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.card {
-  border-radius: 16px;
 }
 </style>
